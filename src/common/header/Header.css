@@ -1,0 +1,20 @@
+.header {
+    background-color: black;
+    padding: 1%;
+    height: 36px;
+}
+
+.login-btn {
+    float: right;
+}
+
+.app-logo {
+    animation: app-logo-spin infinite 8s linear;
+    height: 35px;
+    background: #ff7f7f;
+ }
+ 
+ @keyframes app-logo-spin {
+    from { transform: scaleX(-1); }
+    
+ }
