@@ -19,3 +19,7 @@
     from { transform: scaleX(-1); }
     
  }
+
+ .tabs {
+     margin: 20px;
+ }
