@@ -19,6 +19,7 @@ import Checkbox from '@material-ui/core/Checkbox';
 import genres from '../../common/genres';
 import artists from '../../common/artists';
 import TextField from '@material-ui/core/TextField';
+import Button from '@material-ui/core/Button';
 
 
 const styles = theme => ({
@@ -173,12 +174,16 @@ class Home extends Component {
 
                                 <FormControl className={classes.formControl}>
                                     <TextField 
-                                    id="releaseDateTo"
-                                    label="Release Date To"
+                                    id="releaseDateEnd"
+                                    label="Release Date End"
                                     type="date"
                                     defaultValue=""
                                     InputLabelProps={{shrink: true}}
                                     />
+                                </FormControl>
+
+                                <FormControl className={classes.formControl}>
+                                    <Button variant="contained" color="primary">APPLY</Button>            
                                 </FormControl>
 
                             </CardContent>
