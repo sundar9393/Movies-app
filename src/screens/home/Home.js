@@ -1,4 +1,5 @@
 import React, { Component } from 'react';
+import ReactDOM from 'react-dom';
 import './Home.css';
 import Header from '../../common/header/Header';
 import { withStyles } from '@material-ui/core/styles';
@@ -20,6 +21,7 @@ import genres from '../../common/genres';
 import artists from '../../common/artists';
 import TextField from '@material-ui/core/TextField';
 import Button from '@material-ui/core/Button';
+import Details from '../../screens/details/Details';
 
 
 const styles = theme => ({
@@ -78,6 +80,10 @@ class Home extends Component {
         this.setState({artists: e.target.value})
     }
 
+    movieClickHandler = (movieId) => {
+        ReactDOM.render(<Details movieId={movieId}/>, document.getElementById('root'));
+    }
+
     render() {
         const { classes } = this.props;
         return (
@@ -98,7 +104,7 @@ class Home extends Component {
                     <div className="left">
                         <GridList cellHeight={350} cols={4} className={classes.gridListMain}>
                             {moviesData.map(movie => (
-                                <GridListTile className="released-movie-grid-item" key={"grid" + movie.id}>
+                                <GridListTile onClick={() => this.movieClickHandler(movie.id)} className="released-movie-grid-item" key={"grid" + movie.id}>
                                     <img src={movie.poster_url} className="movie-poster" alt={movie.title} />
                                     <GridListTileBar
                                         title={movie.title}
