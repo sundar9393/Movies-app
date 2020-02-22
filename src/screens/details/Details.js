@@ -1,22 +1,24 @@
 import React , {Component} from 'react';
-import ReactDOM from 'react-dom';
 import Header from '../../common/header/Header';
-import moviesData from '../../common/movieData';
 import './Details.css';
 import { Typography } from '@material-ui/core';
-import Home from '../../screens/home/Home';
 import YouTube from 'react-youtube';
 import GridList from '@material-ui/core/GridList';
 import GridListTile from '@material-ui/core/GridListTile';
 import GridListTileBar from '@material-ui/core/GridListTileBar';
 import StarBorderIcon from '@material-ui/icons/StarBorder';
+import {Link} from 'react-router-dom';
 
 class Details extends Component {
 
     constructor() {
         super();
         this.state= {
-            movies: {},
+            movies: {
+                genres: [],
+                trailer_url: "",
+                artists: []
+            },
             starIcons: [
                 {
                    id: 1,
@@ -48,15 +50,24 @@ class Details extends Component {
     }
 
     componentWillMount() {
-        let currentState = this.state;
-        currentState.movies = moviesData.filter((mov) => {
-            return mov.id === this.props.movieId
-        })[0];
-        this.setState({currentState});
-    }
+       //Get the movie details
 
-    backToHomeHandler = () => {
-        ReactDOM.render(<Home />, document.getElementById('root'));
+        
+        let that = this;
+        let movieData = null;
+        let xhrGetMovie = new XMLHttpRequest();
+        xhrGetMovie.addEventListener("readystatechange", function() {
+            if(this.readyState === 4) {            
+                that.setState({movies: JSON.parse(this.responseText)});                
+            }
+        })
+
+        xhrGetMovie.open("GET", this.props.baseUrl+"movies/"+this.props.match.params.id);
+        xhrGetMovie.setRequestHeader("Cache-Control", "no-cache");
+        xhrGetMovie.setRequestHeader("Access-Control-Allow-Origin", "*");
+        xhrGetMovie.send(movieData);
+
+
     }
 
     artistClickHandler = (wikiLink) => {
@@ -88,10 +99,10 @@ class Details extends Component {
             }
         }
         return(<div className="details">
-            <Header showBookShowButton = "true" />
+            <Header id={this.props.match.params.id} showBookShowButton = "true" />
             <div className="back">
-                <Typography onClick={this.backToHomeHandler}>
-                  &#60; Back to home
+                <Typography>
+                  <Link to="/">&#60; Back to home</Link>  
                 </Typography>
             </div>
             <div className="flex-containerDetails">

@@ -13,6 +13,7 @@ import Input from '@material-ui/core/Input';
 import PropTypes from 'prop-types';
 import FormHelperText from '@material-ui/core/FormHelperText';
 import BookShow from '../../screens/bookshow/BookShow';
+import {Link} from 'react-router-dom';
 
 const customStyles = {
     content: {
@@ -55,7 +56,9 @@ class Header extends Component {
             email: "",
             emailRequired: "dispNone",
             contact: "",
-            contactRequired: "dispNone"
+            contactRequired: "dispNone",
+            registrationSuccess: false,
+            loggedIn: sessionStorage.getItem("access-token") == null ? false : true
         }
     }
     openModalHandler = () => {
@@ -73,7 +76,8 @@ class Header extends Component {
             email: "",
             emailRequired: "dispNone",
             contact: "",
-            contactRequired: "dispNone"
+            contactRequired: "dispNone",
+            registrationSuccess: false
         })
     }
 
@@ -90,6 +94,35 @@ class Header extends Component {
         this.setState({usernameRequired: "dispNone"});
         this.state.password === "" ? this.setState({passwordRequired: "dispBlock"}) :
         this.setState({passwordRequired: "dispNone"});
+
+        if((this.state.username === "") || (this.state.password === "")) {
+            return;
+        }
+
+        let that=this;
+
+        let loginData =  null;
+        let loginAuthHeader = new Buffer(this.state.username+':'+this.state.password).toString('base64');
+
+        let xhrlogin = new XMLHttpRequest();
+        xhrlogin.addEventListener("readystatechange", function() {
+
+            if(this.readyState === 4) {
+                
+                console.log(JSON.parse(this.responseText));                
+                sessionStorage.setItem("uuid", JSON.parse(this.responseText).id);
+                sessionStorage.setItem("access-token", xhrlogin.getResponseHeader("access-token"));
+                that.setState({loggedIn: true});
+                that.closeModalHandler();
+
+            }
+        })
+
+        xhrlogin.open("POST", this.props.baseUrl+"auth/login");
+        xhrlogin.setRequestHeader("authorization", "Basic "+loginAuthHeader);
+        xhrlogin.setRequestHeader("Cache-Control", "no-cache");
+        xhrlogin.send(loginData);
+
     }
 
     registerClickHandler = () => {
@@ -103,6 +136,32 @@ class Header extends Component {
         this.setState({passwordRequired: "dispNone"});
         this.state.contact === "" ? this.setState({contactRequired: "dispBlock"}) :
         this.setState({contactRequired: "dispNone"});
+
+        if((this.state.firstname === "") || (this.state.lastname === "") || (this.state.email === "") || 
+        (this.state.password === "") || (this.state.contact === "")) {
+            return;
+        }
+
+        let that=this;
+        let signupData = JSON.stringify({
+            "email_address": this.state.email,
+            "first_name": this.state.firstname,
+            "last_name": this.state.lastname,
+            "mobile_number": this.state.contact,
+            "password": this.state.password
+          })
+        let xhrsignup = new XMLHttpRequest();
+        xhrsignup.addEventListener("readystatechange", function() {
+            if(this.readyState === 4) {
+                console.log(JSON.parse(xhrsignup.responseText));
+                that.setState({registrationSuccess: true});
+            }
+        })
+
+        xhrsignup.open("POST", this.props.baseUrl+"signup");
+        xhrsignup.setRequestHeader("Content-Type", "application/json");
+        xhrsignup.setRequestHeader("Cache-Control", "no-cache");
+        xhrsignup.send(signupData);
 
     }
 
@@ -134,21 +193,46 @@ class Header extends Component {
         ReactDOM.render(<BookShow />, document.getElementById('root'));
     }
 
+    logoutHandler = () => {
+            sessionStorage.clear();
+            this.setState({loggedIn: false});         
+    }
+
     render() {
         return (
             <div>
                 <header className="header">
                     <img src={logo} className="app-logo" alt="logo" />
+
+                    {this.state.loggedIn === true ? 
+                    <div className="login-btn">                
+                        <Button variant="contained" color="default" onClick={this.logoutHandler}>Logout</Button>
+                    </div> :
                     <div className="login-btn">
-                        <Button variant="contained" color="default" onClick={this.openModalHandler}>Login</Button>
-                    </div>
-                    { this.props.showBookShowButton === "true" ?
-                      <div className="bookshow-button">
-                          <Button variant="contained" color="primary" onClick={this.bookShowHandler}>
-                              BOOK SHOW
-                          </Button>
-                      </div> : ""
+                        <Button variant="contained" color="default" onClick={this.openModalHandler}>Login</Button>    
+                    </div>}
+                    
+                    {this.props.showBookShowButton === "true" && !this.state.loggedIn
+                        ? <div className="bookshow-button">
+                            <Button variant="contained" color="primary" onClick={this.openModalHandler}>
+                                Book Show
+                            </Button>
+                        </div>
+                        : ""
                     }
+
+                    {this.props.showBookShowButton === "true" && this.state.loggedIn
+                        ? <div className="bookshow-button">
+                            <Link to={"/bookshow/" + this.props.id}>
+                                <Button variant="contained" color="primary">
+                                    Book Show
+                                </Button>
+                            </Link>
+                        </div>
+                        : ""
+                        
+                    }
+                    
                     
 
                     
@@ -177,6 +261,10 @@ class Header extends Component {
                                     <span className="red">required</span>
                                 </FormHelperText>
                             </FormControl> <br /><br />
+                            {this.state.loggedIn === true &&
+                                <FormControl>
+                                       <span>Successfully Logged In!!</span> 
+                                </FormControl>} <br/><br/>
                             <Button variant="contained" color="primary" onClick={this.loginClickHandler}>
                                 LOGIN
                             </Button>
@@ -234,6 +322,11 @@ class Header extends Component {
                                 </FormHelperText>
 
                             </FormControl><br /><br />
+                            {this.state.registrationSuccess === true &&
+                            <FormControl>
+                                <span className="successText">Registration Successful. Please Login!</span>
+                            </FormControl>}<br/>
+                        
                             <Button variant="contained" color="primary" onClick={this.registerClickHandler}>
                                 REGISTER
                             </Button>

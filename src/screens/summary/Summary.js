@@ -5,7 +5,6 @@ import Card from '@material-ui/core/Card';
 import CardContent from '@material-ui/core/CardContent';
 import TypoGraphy from '@material-ui/core/Typography';
 import './Summary.css';
-import BookShow from '../../screens/bookshow/BookShow';
 import FormControl from '@material-ui/core/FormControl';
 import InputLabel from '@material-ui/core/InputLabel';
 import Input from '@material-ui/core/Input';
@@ -18,6 +17,7 @@ import PropTypes from 'prop-types';
 import CheckCircleIcon from '@material-ui/icons/CheckCircle';
 import green from '@material-ui/core/colors/green';
 import Home from '../../screens/home/Home';
+import {Link} from 'react-router-dom';
 
 const styles = theme => ({
     close: {
@@ -34,22 +34,77 @@ class Summary extends Component {
     constructor() {
         super();
         this.state = {
-            open: false
-            
+            open: false,
+            coupon: "",
+            referenceCode: "",
+            totalPrice: 0            
         }
     }
 
-    backToBookShowHandler = () => {
-        ReactDOM.render(<BookShow />, document.getElementById('root'));            
+    componentDidMount () {
+        this.setState({totalPrice: this.props.location.totalPrice})
+    }
+
+    couponChangeHandler = event => {
+        this.setState({coupon: event.target.value});
     }
 
     confirmBookingHandler = () => {
-        this.setState({ open: true });
-      }
 
-      snackBarCloseHandler = () => {
-        ReactDOM.render(<Home />, document.getElementById('root'));
-      }
+
+        let that = this;
+        let bookingData = JSON.stringify({
+            "customerUuid": sessionStorage.getItem('uuid'),
+            "bookingRequest": {
+              "coupon_code": this.state.coupon,
+              "show_id": this.props.location.bookingSummary.showId,
+              "tickets": [
+                this.props.location.bookingSummary.tickets.toString()
+              ]
+            }
+          })
+
+        let xhrBookShow = new XMLHttpRequest();
+
+        xhrBookShow.addEventListener("readystatechange", function() {
+            if(this.readyState === 4) {
+                console.log(this.responseText);
+                that.setState({referenceCode: JSON.parse(this.responseText).reference_number})
+            }
+        })
+
+        xhrBookShow.open("POST", this.props.baseUrl+"bookings");
+        xhrBookShow.setRequestHeader("Content-Type", "application/json");
+        xhrBookShow.setRequestHeader("authorization", "Bearer "+sessionStorage.getItem("access-token"));
+        xhrBookShow.setRequestHeader("Cache-Control", "no-cache");
+        xhrBookShow.send(bookingData);
+
+        this.setState({ open: true });
+    }
+
+    snackBarCloseHandler = () => {
+        this.props.history.push('/');
+    }
+
+    applyCouponHandler = () => {
+        
+        let that = this;
+        let couponData = null;
+        let xhrCoupon = new XMLHttpRequest();
+        let totalPrice = this.state.totalPrice;
+
+        xhrCoupon.addEventListener("readystatechange", function() {
+            if(this.readyState === 4) {
+                let discount = (  totalPrice * parseInt(JSON.parse(this.responseText).value) / 100 );                
+                that.setState({totalPrice: totalPrice - discount});
+            }
+        })
+
+        xhrCoupon.open("GET",this.props.baseUrl+"coupons/"+this.state.coupon);
+        xhrCoupon.setRequestHeader("Cache-Control", "no-cache");
+        xhrCoupon.setRequestHeader("authorization", "Bearer "+sessionStorage.getItem("access-token"));        
+        xhrCoupon.send(couponData);
+    }
 
     render() {
 
@@ -59,8 +114,10 @@ class Summary extends Component {
             <div>
                 <Header />
                 <div className="confirmation marginTop16">
-                    <TypoGraphy className="back" onClick={this.backToBookShowHandler}>
-                        &#60; Back to Movie Details
+                    <TypoGraphy className="back">
+                        <Link to={'/movie/'+this.props.match.params.id}>
+                            &#60; Back to Movie Details
+                        </Link>
                     </TypoGraphy>
                     <Card className="cardStyle">
                         <CardContent>
@@ -75,7 +132,7 @@ class Summary extends Component {
                                 </div>
                                 <div>
                                 <TypoGraphy>
-                                    {this.props.location}
+                                    {this.props.location.bookingSummary.location}
                                 </TypoGraphy>
                                 </div>
                             </div> <br/>
@@ -88,7 +145,7 @@ class Summary extends Component {
                                 </div>
                                 <div>
                                 <TypoGraphy>
-                                    {this.props.language}
+                                    {this.props.location.bookingSummary.language}
                                 </TypoGraphy>
                                 </div>
                             </div> <br/>
@@ -100,22 +157,10 @@ class Summary extends Component {
                                 </div>
                                 <div>
                                 <TypoGraphy>
-                                    {this.props.showDate}
+                                    {this.props.location.bookingSummary.showDate}
                                 </TypoGraphy>
                                 </div>
-                            </div> <br/>
-                            <div className="coupon-container">
-                                <div className="confirmLeft">
-                                <TypoGraphy>
-                                    Show Time:
-                                </TypoGraphy>
-                                </div>
-                                <div>
-                                <TypoGraphy>
-                                    {this.props.showTime}
-                                </TypoGraphy>
-                                </div>
-                            </div> <br/>
+                            </div> <br/>                            
                             <div className="coupon-container">
                                 <div className="confirmLeft">
                                 <TypoGraphy>
@@ -124,7 +169,7 @@ class Summary extends Component {
                                 </div>
                                 <div>
                                 <TypoGraphy>
-                                    {this.props.tickets}
+                                    {this.props.location.bookingSummary.tickets.join(', ')}
                                 </TypoGraphy>
                                 </div>
                             </div> <br/>
@@ -136,7 +181,7 @@ class Summary extends Component {
                                 </div>
                                 <div>
                                 <TypoGraphy>
-                                    {this.props.unitPrice}
+                                    {this.props.location.bookingSummary.unitPrice}
                                 </TypoGraphy>
                                 </div>
                             </div> <br/>
@@ -144,11 +189,12 @@ class Summary extends Component {
                                 <div>
                                 <FormControl className="formControl">
                                     <InputLabel htmlFor="coupon">Coupon Code</InputLabel>
-                                    <Input id="coupon" />                        
+                                    <Input id="coupon" onChange={this.couponChangeHandler} />                        
                                     </FormControl>
                                 </div>
                                 <div className="marginApply">
-                                    <Button variant="contained" color="primary">APPLY</Button>
+                                    <Button variant="contained" color="primary"
+                                    onClick={this.applyCouponHandler}>APPLY</Button>
                                 </div>
                             </div> <br/><br/>
                                 
@@ -159,7 +205,7 @@ class Summary extends Component {
                                     </TypoGraphy>
                                  </div>
                                  <div>
-                                    {this.props.totalPrice}
+                                    {this.state.totalPrice}
                                  </div>
                             </div>  <br/>                             
                             
@@ -181,7 +227,8 @@ class Summary extends Component {
                     onClose={this.snackBarCloseHandler}
                     message={
                         <span id="client-snackbar" className={classes.success}>
-                        <div className="confirm"><div><CheckCircleIcon /></div><div className="message"> Booking Confirmed!</div></div>
+                        <div className="confirm"><div><CheckCircleIcon /></div><div className="message"> Booking Confirmed!
+                    Your booking reference number is {this.state.referenceCode}</div></div>
                         </span>
                     }
                     action={[

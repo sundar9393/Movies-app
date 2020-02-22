@@ -1,24 +1,17 @@
-import React, {Component} from 'react';
-import ReactDOM from 'react-dom';
+import React, { Component } from 'react';
 import Header from '../../common/header/Header';
-import TypoGraphy from '@material-ui/core/Typography';
-import Home from '../../screens/home/Home';
+import Typography from '@material-ui/core/Typography';
 import './BookShow.css';
 import Card from '@material-ui/core/Card';
 import CardContent from '@material-ui/core/CardContent';
-import language from '../../common/language';
-import location from '../../common/location';
-import showDate from '../../common/showDate';
-import showTime from '../../common/showTime';
 import FormControl from '@material-ui/core/FormControl';
 import InputLabel from '@material-ui/core/InputLabel';
-import MenuItem from '@material-ui/core/MenuItem';
-import Select from '@material-ui/core/Select';
 import Input from '@material-ui/core/Input';
+import Select from '@material-ui/core/Select';
+import MenuItem from '@material-ui/core/MenuItem';
 import Button from '@material-ui/core/Button';
 import FormHelperText from '@material-ui/core/FormHelperText';
-import Summary from '../../screens/summary/Summary';
-
+import { Link } from 'react-router-dom';
 
 class BookShow extends Component {
 
@@ -26,176 +19,256 @@ class BookShow extends Component {
         super();
         this.state = {
             location: "",
-            locationRequired: "dispNone",
+            theatre: "",
             language: "",
-            languageRequired: "dispNone",
-            date: "",
-            dateRequired: "dispNone",
-            time: "",
-            timeRequired: "dispNone",
-            tickets: 0,
-            ticketsRequired: "dispNone",
-            availableTickets: 100,
-            unitPrice: 500
-
+            showDate: "",
+            showId: "",
+            tickets: [],
+            unitPrice: 500,
+            availableTickets: 20,
+            reqLocation: "dispNone",
+            reqTheatre: "dispNone",
+            reqLanguage: "dispNone",
+            reqShowDate: "dispNone",
+            reqTickets: "dispNone",
+            locations: [],
+            languages: [],
+            theatres: [],
+            showDates: [],
+            showTimes: [],
+            originalShows: []
         }
     }
 
-    backToDetailsHandler = () => {
-        ReactDOM.render(<Home />, document.getElementById('root'));
+    componentWillMount() {
+        let that = this;
+        let dataShows = null;
+        let xhrShows = new XMLHttpRequest();
+        xhrShows.addEventListener("readystatechange", function () {
+            if (this.readyState === 4) {
+                let response = JSON.parse(this.responseText);
+                that.setState({ originalShows: response.shows });
+                let newLocations = [];
+
+                for (let show of response.shows) {
+                    newLocations.push({ id: show.theatre.city, location: show.theatre.city });
+                }
+
+                newLocations = newLocations.filter((loc, index, self) =>
+                    index === self.findIndex((c) => (
+                        c.id === loc.id
+                    ))
+                )
+
+                that.setState({ locations: newLocations })
+            }
+        })
+
+        xhrShows.open("GET", this.props.baseUrl + "movies/" + this.props.match.params.id + "/shows");
+        xhrShows.setRequestHeader("Cache-Control", "no-cache");
+        xhrShows.send(dataShows);
     }
 
-    locationChangeHandler = (event) => {
-        this.setState({location: event.target.value});
+    locationChangeHandler = event => {
+        this.setState({ location: event.target.value });
+        let newTheatres = [];
+
+        for (let show of this.state.originalShows) {
+            if (show.theatre.city === event.target.value) {
+                newTheatres.push({ id: show.theatre.name, theatre: show.theatre.name });
+            }
+        }
+
+        newTheatres = newTheatres.filter((theatre, index, self) =>
+            index === self.findIndex((t) => (
+                t.id === theatre.id
+            ))
+        )
+
+        this.setState({ theatres: newTheatres });
     }
 
-    languageChangeHandler = (event) => {
-        this.setState({language: event.target.value});
+    theatreChangeHandler = event => {
+        this.setState({ theatre: event.target.value });
+
+        let newLanguages = [];
+
+        for (let show of this.state.originalShows) {
+            if (show.theatre.city === this.state.location && show.theatre.name === event.target.value) {
+                newLanguages.push({ id: show.language, language: show.language });
+            }
+        }
+
+        newLanguages = newLanguages.filter((lang, index, self) =>
+            index === self.findIndex((l) => (
+                l.id === lang.id
+            ))
+        )
+        this.setState({ languages: newLanguages });
     }
 
-    showDateChangeHandler = (event) => {
-        this.setState({date: event.target.value});
+    languageChangeHandler = event => {
+        this.setState({ language: event.target.value });
+
+        let newShowDates = [];
+
+        for (let show of this.state.originalShows) {
+            if (show.theatre.city === this.state.location && show.theatre.name === this.state.theatre && show.language === event.target.value) {
+                newShowDates.push({ id: show.show_timing, showDate: show.show_timing });
+            }
+        }
+
+        newShowDates = newShowDates.filter((date, index, self) =>
+            index === self.findIndex((d) => (
+                d.id === date.id
+            ))
+        )
+
+        this.setState({ showDates: newShowDates });
     }
 
-    showTimeChangeHandler = (event) => {
-        this.setState({time: event.target.value});
+    showDateChangeHandler = event => {
+        this.setState({ showDate: event.target.value });
+
+        let unitPrice = 0;
+        let availableTickets = 0;
+
+        for (let show of this.state.originalShows) {
+            if (show.theatre.city === this.state.location && show.theatre.name === this.state.theatre && show.language === this.state.language && show.show_timing === event.target.value) {
+                unitPrice = show.unit_price;
+                availableTickets = show.available_seats;
+                this.setState({ showId: show.id });
+            }
+        }
+
+        this.setState({ unitPrice: unitPrice, availableTickets: availableTickets });
     }
 
-    ticketChangeHandler = (event) => {
-        this.setState({tickets: event.target.value});
+    ticketsChangeHandler = event => {
+        this.setState({ tickets: event.target.value.split(",") });
     }
 
     bookShowButtonHandler = () => {
-        this.state.location === "" ? this.setState({locationRequired: "dispBlock"}) :
-        this.setState({locationRequired: "dispNone"});
-        this.state.language === "" ? this.setState({languageRequired: "dispBlock"}) :
-        this.setState({languageRequired: "dispNone"});
-        this.state.date === "" ? this.setState({dateRequired: "dispBlock"}) :
-        this.setState({dateRequired: "dispNone"});
-        this.state.time === "" ? this.setState({timeRequired: "dispBlock"}) :
-        this.setState({timeRequired: "dispNone"});
-        this.state.tickets === "0" || this.state.tickets === 0 || this.state.tickets === ""  ? this.setState({ticketsRequired: "dispBlock"}) :
-        this.setState({ticketsRequired: "dispNone"});
+        this.state.location === "" ? this.setState({ reqLocation: "dispBlock" }) : this.setState({ reqLocation: "dispNone" });
+        this.state.theatre === "" ? this.setState({ reqTheatre: "dispBlock" }) : this.setState({ reqTheatre: "dispNone" });
+        this.state.language === "" ? this.setState({ reqLanguage: "dispBlock" }) : this.setState({ reqLanguage: "dispNone" });
+        this.state.showDate === "" ? this.setState({ reqShowDate: "dispBlock" }) : this.setState({ reqShowDate: "dispNone" });
+        this.state.tickets === 0 ? this.setState({ reqTickets: "dispBlock" }) : this.setState({ reqTickets: "dispNone" });
 
-        ReactDOM.render(<Summary location={this.state.location} language={this.state.language} 
-            showDate={this.state.date} showTime={this.state.time} tickets={this.state.tickets}
-            unitPrice={this.state.unitPrice} totalPrice={this.state.unitPrice * this.state.tickets} 
-        />, document.getElementById('root'));
+        if ((this.state.location === "") || (this.state.theatre === "") || (this.state.language === "") || (this.state.showDate === "") || (this.state.tickets === 0)) { return; }
 
+        this.props.history.push({
+            pathname: '/summary/' + this.props.match.params.id,
+            bookingSummary: this.state,
+            totalPrice: this.state.unitPrice * this.state.tickets.length
+        })
     }
-
-    
 
     render() {
         return (
             <div>
                 <Header />
                 <div className="bookShow">
-                    <TypoGraphy className="back" onClick={this.backToDetailsHandler}>
-                        &#60; Back to Movie Details
-                    </TypoGraphy>
+                    <Typography className="back" >
+                        <Link to={"/movie/" + this.props.match.params.id}>&#60; Back to Movie Details</Link>
+                    </Typography>
+
                     <Card className="cardStyle">
                         <CardContent>
-                            <TypoGraphy variant="headline" component="h2">BOOK SHOW</TypoGraphy><br />
+                            <Typography variant="headline" component="h2">
+                                BOOK SHOW
+                            </Typography><br />
+
                             <FormControl required className="formControl">
-                                <InputLabel htmlFor="location">Choose Location: </InputLabel>
+                                <InputLabel htmlFor="location">Choose Location:</InputLabel>
                                 <Select
-                                input={<Input id="location" />}
-                                value={this.state.location}
-                                onChange={this.locationChangeHandler}>
-                                    {location.map(loc => (
-                                        <MenuItem key={"loc"+loc.id} value={loc.location}>
+                                    value={this.state.location}
+                                    onChange={this.locationChangeHandler}
+                                >
+                                    {this.state.locations.map(loc => (
+                                        <MenuItem key={"loc" + loc.id} value={loc.location}>
                                             {loc.location}
                                         </MenuItem>
                                     ))}
-
                                 </Select>
-                                <FormHelperText className={this.state.locationRequired}>
-                                    <span className="red">required</span>
+                                <FormHelperText className={this.state.reqLocation}>
+                                    <span className="red">Required</span>
                                 </FormHelperText>
                             </FormControl>
+                            <br /><br />
                             <FormControl required className="formControl">
-                                <InputLabel htmlFor="language">Choose language:</InputLabel>
+                                <InputLabel htmlFor="theatre">Choose Theatre:</InputLabel>
                                 <Select
-                                input={<Input id="location" />}
-                                value={this.state.language}
-                                onChange={this.languageChangeHandler}
+                                    value={this.state.theatre}
+                                    onChange={this.theatreChangeHandler}
                                 >
-                                    {language.map(lang => (
-                                        <MenuItem key={"lang"+lang.id} value={lang.language}>
+                                    {this.state.theatres.map(th => (
+                                        <MenuItem key={"theatre" + th.id} value={th.theatre}>
+                                            {th.theatre}
+                                        </MenuItem>
+                                    ))}
+                                </Select>
+                                <FormHelperText className={this.state.reqTheatre}>
+                                    <span className="red">Required</span>
+                                </FormHelperText>
+                            </FormControl>
+                            <br /><br />
+                            <FormControl required className="formControl">
+                                <InputLabel htmlFor="language">Choose Language:</InputLabel>
+                                <Select
+                                    value={this.state.language}
+                                    onChange={this.languageChangeHandler}
+                                >
+                                    {this.state.languages.map(lang => (
+                                        <MenuItem key={"lang" + lang.id} value={lang.language}>
                                             {lang.language}
                                         </MenuItem>
                                     ))}
-
                                 </Select>
-                                <FormHelperText className={this.state.languageRequired}>
-                                    <span className="red">required</span>
+                                <FormHelperText className={this.state.reqLanguage}>
+                                    <span className="red">Required</span>
                                 </FormHelperText>
-
                             </FormControl>
-                            <FormControl className="formControl">
+                            <br /><br />
+                            <FormControl required className="formControl">
                                 <InputLabel htmlFor="showDate">Choose Show Date:</InputLabel>
                                 <Select
-                                input={<Input id="showDate" />}
-                                value={this.state.date}
-                                onChange={this.showDateChangeHandler}
+                                    value={this.state.showDate}
+                                    onChange={this.showDateChangeHandler}
                                 >
-                                    {showDate.map(date => (
-                                        <MenuItem id={"date"+date.id} value={date.showDate}>
-                                            {date.showDate}
+                                    {this.state.showDates.map(sd => (
+                                        <MenuItem key={"showDate" + sd.id} value={sd.showDate}>
+                                            {sd.showDate}
                                         </MenuItem>
                                     ))}
-
                                 </Select>
-                                <FormHelperText className={this.state.dateRequired}>
-                                    <span className="red">required</span>
+                                <FormHelperText className={this.state.reqShowDate}>
+                                    <span className="red">Required</span>
                                 </FormHelperText>
                             </FormControl>
-
-                            <FormControl className="formControl">
-                                <InputLabel htmlFor="showTime">Choose Show Time:</InputLabel>
-                                <Select
-                                input={<Input id="showTime" />}
-                                value={this.state.time}
-                                onChange={this.showTimeChangeHandler}
-                                >
-                                    {showTime.map(time => (
-                                        <MenuItem key={"time"+time.id} value={time.showTime}>
-                                            {time.showTime}
-                                        </MenuItem>
-                                    ))}
-
-                                </Select>
-                                <FormHelperText className={this.state.timeRequired}>
-                                    <span className="red">required</span>
+                            <br /><br />
+                            <FormControl required className="formControl">
+                                <InputLabel htmlFor="tickets">Seat Selection: ( {this.state.availableTickets} available )</InputLabel>
+                                <Input id="tickets" value={this.state.tickets !== 0 ? this.state.tickets : ""} onChange={this.ticketsChangeHandler} />
+                                <FormHelperText className={this.state.reqTickets}>
+                                    <span className="red">Required</span>
                                 </FormHelperText>
-
                             </FormControl>
-
-                            <FormControl className="formControl">
-                                <InputLabel htmlFor="tickets">Tickets( {this.state.availableTickets} available )</InputLabel>
-                                <Input id="tickets" required value={this.state.tickets !== 0 ? this.state.tickets:""} 
-                                onChange={this.ticketChangeHandler} />
-                                <FormHelperText className={this.state.ticketsRequired}>
-                                    <span className="red">required</span>
-                                </FormHelperText>
-                            </FormControl><br/><br/>
-                            <TypoGraphy>
+                            <br /><br />
+                            <Typography>
                                 Unit Price: Rs. {this.state.unitPrice}
-                            </TypoGraphy><br/>
-                            <TypoGraphy>
-                                Total Price: Rs. {this.state.unitPrice * this.state.tickets}
-                            </TypoGraphy><br/><br/>
+                            </Typography>
+                            <br />
+                            <Typography>
+                                Total Price: Rs. {this.state.unitPrice * this.state.tickets.length}
+                            </Typography>
+                            <br /><br />
                             <Button variant="contained" onClick={this.bookShowButtonHandler} color="primary">
                                 BOOK SHOW
                             </Button>
-
-                            
-                            
                         </CardContent>
                     </Card>
                 </div>
-
             </div>
         )
     }
